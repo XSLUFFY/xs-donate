@@ -47,8 +47,16 @@ function emitToUser(userId, event, data) {
     io.to(`user-${userId}`).emit(event, data);
 }
 
+// Envia um evento para todos os clientes conectados
+function emitAll(event, data) {
+    if (!io) return;
+
+    io.emit(event, data);
+}
+
 module.exports = {
     initialize,
     getIO,
-    emitToUser
+    emitToUser,
+    emitAll
 };
