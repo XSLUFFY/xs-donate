@@ -17,7 +17,6 @@ function initialize(server) {
             console.log(`🔌 Cliente desconectado: ${socket.id}`);
         });
 
-        // Cliente entra na sala do usuário
         socket.on("join-user", (userId) => {
             if (!userId) return;
 
