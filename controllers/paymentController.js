@@ -3,7 +3,7 @@ const Donation = require("../models/Donation");
 
 async function createPix(req, res) {
     try {
-        const { donationId } = req.body;
+        const { donationId, email } = req.body;
 
         if (!donationId) {
             return res.status(400).json({
@@ -14,7 +14,9 @@ async function createPix(req, res) {
 
         const donations = await Donation.getDonations(req.user.id);
 
-        const donation = donations.find(d => d.id == donationId);
+        const donation = donations.find(
+            d => String(d.id) === String(donationId)
+        );
 
         if (!donation) {
             return res.status(404).json({
@@ -23,7 +25,31 @@ async function createPix(req, res) {
             });
         }
 
-        const payment = await mercadoPagoService.createPixPayment(donation);
+        const payerEmail =
+            email ||
+            req.user.email ||
+            process.env.MP_PAYER_EMAIL;
+
+        if (!payerEmail) {
+            return res.status(400).json({
+                success: false,
+                message: "E-mail do pagador não informado."
+            });
+        }
+
+        const payment =
+            await mercadoPagoService.createPixPayment(
+                donation,
+                payerEmail
+            );
+
+        if (payment.id) {
+            await Donation.updateStatus(
+                donation.id,
+                "pending",
+                payment.id
+            );
+        }
 
         return res.json({
             success: true,
@@ -31,12 +57,14 @@ async function createPix(req, res) {
         });
 
     } catch (error) {
+        console.error("❌ Erro ao criar PIX:", error);
 
         return res.status(500).json({
             success: false,
-            message: error.message
+            message:
+                error.message ||
+                "Erro ao criar pagamento PIX."
         });
-
     }
 }
 
