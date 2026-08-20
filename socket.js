@@ -1,92 +1,55 @@
-require("dotenv").config();
+const { Server } = require("socket.io");
 
-const express = require("express");
-const http = require("http");
-const path = require("path");
-const cors = require("cors");
-const helmet = require("helmet");
+let io = null;
 
-const socket = require("./socket");
-
-const User = require("./models/User");
-const Profile = require("./models/Profile");
-const Donation = require("./models/Donation");
-
-const authRoutes = require("./routes/auth");
-const userRoutes = require("./routes/users");
-const donationRoutes = require("./routes/donations");
-const paymentRoutes = require("./routes/payments");
-const webhookRoutes = require("./webhooks/mercadoPagoWebhook");
-
-const app = express();
-const server = http.createServer(app);
-
-socket.initialize(server);
-
-app.use(cors());
-app.use(helmet());
-app.use(express.json());
-
-// ===========================
-// ARQUIVOS PÚBLICOS
-// ===========================
-
-app.use(express.static(path.join(__dirname, "public")));
-
-// ===========================
-// ROTAS
-// ===========================
-
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/donations", donationRoutes);
-app.use("/api/payments", paymentRoutes);
-app.use("/webhook", webhookRoutes);
-
-// ===========================
-// OVERLAY OBS
-// ===========================
-
-app.get("/overlay", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "overlay.html"));
-});
-
-// ===========================
-// ROTA PRINCIPAL
-// ===========================
-
-app.get("/", (req, res) => {
-    res.json({
-        application: "XS Donate",
-        version: "1.0.0",
-        status: "online"
+function initialize(server) {
+    io = new Server(server, {
+        cors: {
+            origin: "*",
+            methods: ["GET", "POST"]
+        }
     });
-});
 
-const PORT = process.env.PORT || 3000;
+    io.on("connection", (socket) => {
+        console.log(`🔌 Cliente conectado: ${socket.id}`);
 
-async function startServer() {
-    try {
-
-        await User.createTable();
-        await Profile.createTable();
-        await Donation.createTable();
-
-        server.listen(PORT, () => {
-            console.log("==================================");
-            console.log("       XS DONATE BACKEND");
-            console.log("==================================");
-            console.log(`🚀 Servidor: http://localhost:${PORT}`);
-            console.log(`📺 Overlay: http://localhost:${PORT}/overlay`);
-            console.log("⚡ Socket.IO iniciado");
-            console.log("💳 Mercado Pago ativo");
-            console.log("🔔 Webhook: /webhook/mercadopago");
-            console.log("==================================");
+        socket.on("disconnect", () => {
+            console.log(`🔌 Cliente desconectado: ${socket.id}`);
         });
 
-    } catch (error) {
-        console.error("Erro ao iniciar o servidor:", error);
-    }
+        // Cliente entra na sala do usuário
+        socket.on("join-user", (userId) => {
+            if (!userId) return;
+
+            socket.join(`user-${userId}`);
+
+            console.log(
+                `👤 Socket ${socket.id} entrou na sala do usuário ${userId}`
+            );
+        });
+    });
+
+    console.log("⚡ Socket.IO inicializado.");
+
+    return io;
 }
 
-startServer();
+function getIO() {
+    if (!io) {
+        throw new Error("Socket.IO ainda não foi inicializado.");
+    }
+
+    return io;
+}
+
+function emitToUser(userId, event, data) {
+    if (!io || !userId) return;
+
+    io.to(`user-${userId}`).emit(event, data);
+}
+
+module.exports = {
+    initialize,
+    getIO,
+    emitToUser
+};
