@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>XS Donate Dashboard</title>
+
+    <link rel="stylesheet" href="dashboard.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            XS Donate
+        </div>
+
+        <ul class="menu">
+
+            <li class="active">🏠 Dashboard</li>
+            <li>🔔 Alertas</li>
+            <li>🖥 Overlay</li>
+            <li>💰 Doações</li>
+            <li>🎯 Metas</li>
+            <li>🎨 Aparência</li>
+            <li>⚙ Configurações</li>
+
+        </ul>
+
+    </aside>
+
+    <!-- CONTEÚDO -->
+
+    <main class="main">
+
+        <div class="header">
+
+            <div>
+
+                <h1>Painel do Streamer</h1>
+
+                <p>
+                    Bem-vindo ao XS Donate
+                </p>
+
+            </div>
+
+            <div class="status">
+                ● Online
+            </div>
+
+        </div>
+
+        <!-- CARDS -->
+
+        <div class="cards">
+
+            <div class="card">
+
+                <h3>Total Arrecadado</h3>
+
+                <div class="value" id="totalRaised">
+                    R$ 0,00
+                </div>
+
+            </div>
+
+            <div class="card">
+
+                <h3>Total de Doações</h3>
+
+                <div class="value" id="totalDonations">
+                    0
+                </div>
+
+            </div>
+
+            <div class="card">
+
+                <h3>Maior Doação</h3>
+
+                <div class="value" id="highestDonation">
+                    R$ 0,00
+                </div>
+
+            </div>
+
+            <div class="card">
+
+                <h3>Última Doação</h3>
+
+                <div class="value" id="lastDonation">
+                    Nenhuma
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- PAINÉIS -->
+
+        <div class="grid">
+
+            <!-- ÚLTIMAS DOAÇÕES -->
+
+            <div class="panel">
+
+                <h2>Últimas Doações</h2>
+
+                <table class="table">
+
+                    <tbody id="donationTable">
+
+                        <tr>
+
+                            <td colspan="3">
+                                Nenhuma doação registrada.
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <!-- META -->
+
+            <div class="panel">
+
+                <h2>Meta do Mês</h2>
+
+                <h3 id="goalText">
+                    R$ 0,00 / R$ 500,00
+                </h3>
+
+                <div class="progress">
+
+                    <div
+                        class="progress-bar"
+                        id="goalBar">
+
+                    </div>
+
+                </div>
+
+                <br>
+
+                <p>
+
+                    Falta
+
+                    <strong id="goalRemaining">
+
+                        R$ 500,00
+
+                    </strong>
+
+                    para atingir a meta.
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script src="dashboard.js"></script>
+
+</body>
+
+</html>

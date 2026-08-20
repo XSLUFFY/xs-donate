@@ -1,0 +1,165 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: transparent;
+    overflow: hidden;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+#overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#alert {
+    position: absolute;
+    left: 50%;
+    bottom: 80px;
+    transform: translateX(-50%);
+    animation: slideIn .5s ease forwards;
+}
+
+.alert-container {
+
+    display: flex;
+    align-items: center;
+    gap: 20px;
+
+    min-width: 550px;
+    max-width: 900px;
+
+    padding: 22px 28px;
+
+    border-radius: 22px;
+
+    background: rgba(17,17,17,.95);
+
+    border: 2px solid #00E5FF;
+
+    box-shadow:
+        0 0 18px rgba(0,229,255,.40),
+        0 0 60px rgba(0,229,255,.15);
+
+}
+
+.gif-area {
+
+    width: 120px;
+    height: 120px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    flex-shrink: 0;
+
+}
+
+#gif {
+
+    width: 120px;
+    height: 120px;
+
+    object-fit: contain;
+
+}
+
+.content {
+
+    display: flex;
+    flex-direction: column;
+
+    width: 100%;
+
+}
+
+#name {
+
+    color: #00E5FF;
+
+    font-size: 30px;
+
+    font-weight: 800;
+
+    margin-bottom: 10px;
+
+}
+
+#message {
+
+    color: #FFFFFF;
+
+    font-size: 21px;
+
+    line-height: 1.4;
+
+    margin-bottom: 14px;
+
+    word-break: break-word;
+
+}
+
+#amount {
+
+    color: #00FF73;
+
+    font-size: 32px;
+
+    font-weight: bold;
+
+}
+
+@keyframes slideIn {
+
+    from {
+
+        opacity: 0;
+
+        transform: translate(-50%, 120px) scale(.85);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translate(-50%, 0) scale(1);
+
+    }
+
+}
+
+@keyframes slideOut {
+
+    from {
+
+        opacity: 1;
+
+        transform: translate(-50%, 0) scale(1);
+
+    }
+
+    to {
+
+        opacity: 0;
+
+        transform: translate(-50%, 120px) scale(.85);
+
+    }
+
+}
+
+.fadeOut {
+
+    animation: slideOut .5s ease forwards;
+
+}

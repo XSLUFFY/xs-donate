@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>XS Donate Overlay</title>
+
+    <link rel="stylesheet" href="/style.css">
+
+    <script src="/socket.io/socket.io.js"></script>
+
+</head>
+
+<body>
+
+    <div id="overlay">
+
+        <div id="alert" class="hidden">
+
+            <div class="alert-container">
+
+                <div class="gif-area">
+
+                    <img
+                        id="gif"
+                        src="/gifs/default.gif"
+                        alt="Alerta XS Donate">
+
+                </div>
+
+                <div class="content">
+
+                    <h2 id="name">
+                        Novo Apoiador
+                    </h2>
+
+                    <p id="message">
+                        Obrigado pela sua doação!
+                    </p>
+
+                    <div id="amount">
+                        R$ 0,00
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <audio id="alertSound" preload="auto">
+        <source src="/sounds/alert.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="/app.js"></script>
+
+</body>
+
+</html>

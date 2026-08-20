@@ -1,0 +1,276 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;
+    background:#0b1220;
+    color:#fff;
+}
+
+.container{
+    display:flex;
+    min-height:100vh;
+}
+
+/* =======================
+   SIDEBAR
+======================= */
+
+.sidebar{
+
+    width:260px;
+
+    background:#111827;
+
+    border-right:1px solid rgba(255,255,255,.08);
+
+    padding:25px;
+
+}
+
+.logo{
+
+    font-size:28px;
+
+    font-weight:bold;
+
+    color:#00d4ff;
+
+    margin-bottom:40px;
+
+}
+
+.menu{
+
+    list-style:none;
+
+}
+
+.menu li{
+
+    padding:15px;
+
+    margin-bottom:10px;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+    transition:.25s;
+
+}
+
+.menu li:hover{
+
+    background:#1f2937;
+
+}
+
+.menu li.active{
+
+    background:#00d4ff;
+
+    color:#000;
+
+    font-weight:bold;
+
+}
+
+/* =======================
+   MAIN
+======================= */
+
+.main{
+
+    flex:1;
+
+    padding:35px;
+
+}
+
+.header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:35px;
+
+}
+
+.header h1{
+
+    font-size:34px;
+
+}
+
+.status{
+
+    color:#00ff8c;
+
+    font-weight:bold;
+
+}
+
+/* =======================
+   CARDS
+======================= */
+
+.cards{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+
+    gap:20px;
+
+    margin-bottom:30px;
+
+}
+
+.card{
+
+    background:#162133;
+
+    border-radius:18px;
+
+    padding:22px;
+
+    border:1px solid rgba(255,255,255,.05);
+
+    transition:.25s;
+
+}
+
+.card:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:0 0 18px rgba(0,212,255,.30);
+
+}
+
+.card h3{
+
+    color:#9ca3af;
+
+    margin-bottom:15px;
+
+    font-size:15px;
+
+}
+
+.value{
+
+    font-size:34px;
+
+    font-weight:bold;
+
+    color:#00d4ff;
+
+}
+
+/* =======================
+   PAINÉIS
+======================= */
+
+.grid{
+
+    display:grid;
+
+    grid-template-columns:2fr 1fr;
+
+    gap:20px;
+
+}
+
+.panel{
+
+    background:#162133;
+
+    border-radius:18px;
+
+    padding:25px;
+
+    border:1px solid rgba(255,255,255,.05);
+
+}
+
+.panel h2{
+
+    margin-bottom:20px;
+
+    color:#00d4ff;
+
+}
+
+.table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+}
+
+.table tr{
+
+    border-bottom:1px solid rgba(255,255,255,.05);
+
+}
+
+.table td{
+
+    padding:14px;
+
+}
+
+.progress{
+
+    width:100%;
+
+    height:18px;
+
+    background:#263245;
+
+    border-radius:20px;
+
+    overflow:hidden;
+
+    margin-top:15px;
+
+}
+
+.progress-bar{
+
+    width:35%;
+
+    height:100%;
+
+    background:#00d4ff;
+
+}
+
+/* =======================
+   RESPONSIVO
+======================= */
+
+@media(max-width:1000px){
+
+    .sidebar{
+
+        display:none;
+
+    }
+
+    .grid{
+
+        grid-template-columns:1fr;
+
+    }
+
+}
