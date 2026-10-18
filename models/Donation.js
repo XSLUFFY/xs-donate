@@ -1,183 +1,99 @@
+
 const db = require("../database/db");
 
-
-// ==========================================
-// CRIAR TABELA
-// ==========================================
-
+// Criar tabela
 async function createTable() {
-
     const query = `
         CREATE TABLE IF NOT EXISTS donations (
             id SERIAL PRIMARY KEY,
-
-            user_id INTEGER NOT NULL
-                REFERENCES users(id)
-                ON DELETE CASCADE,
-
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             donor_name VARCHAR(100) NOT NULL,
-
-            donor_message TEXT,
-
-            amount DECIMAL(10,2) NOT NULL,
-
-            status VARCHAR(20)
-                DEFAULT 'pending',
-
+            donor_message TEXT DEFAULT '',
+            amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
             payment_id VARCHAR(100),
-
-            created_at TIMESTAMP
-                DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     `;
 
     await db.query(query);
 }
 
-
-// ==========================================
-// CRIAR DOAÇÃO
-// ==========================================
-
-async function createDonation(
-    userId,
-    donorName,
-    donorMessage,
-    amount
-) {
-
+// Criar doação
+async function createDonation(userId, donorName, donorMessage, amount) {
     const result = await db.query(
-
-        `
-        INSERT INTO donations
-        (
-            user_id,
-            donor_name,
-            donor_message,
-            amount
-        )
-
-        VALUES
-        ($1, $2, $3, $4)
-
-        RETURNING *
-        `,
-
-        [
-            userId,
-            donorName,
-            donorMessage,
-            amount
-        ]
-
+        `INSERT INTO donations
+            (user_id, donor_name, donor_message, amount)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [userId, donorName, donorMessage || "", amount]
     );
 
     return result.rows[0];
 }
 
-
-// ==========================================
-// BUSCAR DOAÇÕES DO USUÁRIO
-// ==========================================
-
+// Buscar doações de um usuário
 async function getDonations(userId) {
-
     const result = await db.query(
-
-        `
-        SELECT *
-        FROM donations
-
-        WHERE user_id = $1
-
-        ORDER BY created_at DESC
-        `,
-
+        `SELECT *
+         FROM donations
+         WHERE user_id = $1
+         ORDER BY created_at DESC`,
         [userId]
-
     );
 
     return result.rows;
 }
 
-
-// ==========================================
-// BUSCAR DOAÇÃO PELO PAYMENT ID
-// ==========================================
-
-async function findByPaymentId(paymentId) {
-
+// Buscar doação pelo ID
+async function findById(id) {
     const result = await db.query(
-
-        `
-        SELECT *
-        FROM donations
-
-        WHERE payment_id = $1
-
-        LIMIT 1
-        `,
-
-        [String(paymentId)]
-
+        `SELECT *
+         FROM donations
+         WHERE id = $1
+         LIMIT 1`,
+        [id]
     );
 
-    return result.rows[0];
+    return result.rows[0] || null;
 }
 
-
-// ==========================================
-// ATUALIZAR STATUS
-// ==========================================
-
-async function updateStatus(
-    id,
-    status,
-    paymentId
-) {
-
+// Buscar doação pelo ID do pagamento
+async function findByPaymentId(paymentId) {
     const result = await db.query(
+        `SELECT *
+         FROM donations
+         WHERE payment_id = $1
+         LIMIT 1`,
+        [String(paymentId)]
+    );
 
-        `
-        UPDATE donations
+    return result.rows[0] || null;
+}
 
-        SET
-            status = $1,
-            payment_id = COALESCE($2, payment_id)
-
-        WHERE id = $3
-
-        RETURNING *
-        `,
-
+// Atualizar status da doação
+async function updateStatus(id, status, paymentId) {
+    const result = await db.query(
+        `UPDATE donations
+         SET status = $1,
+             payment_id = COALESCE($2, payment_id)
+         WHERE id = $3
+         RETURNING *`,
         [
             status,
-            paymentId
-                ? String(paymentId)
-                : null,
+            paymentId == null ? null : String(paymentId),
             id
         ]
-
     );
 
-    return result.rows[0];
+    return result.rows[0] || null;
 }
 
-
-// ==========================================
-// EXPORTS
-// ==========================================
-
 module.exports = {
-
     createTable,
-
     createDonation,
-
     getDonations,
-
+    findById,
     findByPaymentId,
-
     updateStatus
-
 };
