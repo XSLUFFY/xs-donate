@@ -3,7 +3,9 @@ const { v4: uuidv4 } = require("uuid");
 const API_URL = "https://api.mercadopago.com";
 
 function isTestMode() {
-    return (process.env.MP_TEST_MODE || "").trim().toLowerCase() === "true";
+    return (
+        (process.env.MP_TEST_MODE || "").trim().toLowerCase() === "true"
+    );
 }
 
 async function apiRequest(url, options = {}) {
@@ -41,9 +43,9 @@ async function apiRequest(url, options = {}) {
 
         throw new Error(
             "Mercado Pago HTTP " +
-            response.status +
-            ": " +
-            String(detail).slice(0, 400)
+                response.status +
+                ": " +
+                String(detail).slice(0, 400)
         );
     }
 
@@ -75,22 +77,25 @@ async function createPixPayment(donation, payerEmail) {
 
     const payer = testMode
         ? {
-            email: "test_user_br@testuser.com",
-            first_name: "APRO"
-        }
+              email: "test@testuser.com",
+              first_name: "APRO"
+          }
         : {
-            email: payerEmail
-        };
+              email: payerEmail
+          };
+
+    const amountString = amount.toFixed(2);
 
     const orderBody = {
         type: "online",
+        processing_mode: "automatic",
         external_reference: String(donation.id),
-        total_amount: amount.toFixed(2),
+        total_amount: amountString,
         payer: payer,
         transactions: {
             payments: [
                 {
-                    amount: amount.toFixed(2),
+                    amount: amountString,
                     payment_method: {
                         id: "pix",
                         type: "bank_transfer"
@@ -120,9 +125,16 @@ async function createPixPayment(donation, payerEmail) {
         id: order.id,
         status: order.status || transaction.status || null,
         status_detail:
-            order.status_detail || transaction.status_detail || null,
+            order.status_detail ||
+            transaction.status_detail ||
+            null,
         payment_id: transaction.id || null,
-        amount: order.total_amount || transaction.amount || amount.toFixed(2),
+        payment_status: transaction.status || null,
+        payment_status_detail: transaction.status_detail || null,
+        amount:
+            order.total_amount ||
+            transaction.amount ||
+            amountString,
         qr_code: paymentMethod.qr_code || null,
         qr_code_base64: paymentMethod.qr_code_base64 || null,
         ticket_url: paymentMethod.ticket_url || null,
@@ -134,6 +146,8 @@ async function createPixPayment(donation, payerEmail) {
         order_id: result.id,
         status: result.status,
         status_detail: result.status_detail,
+        payment_status: result.payment_status,
+        payment_status_detail: result.payment_status_detail,
         qr_code_gerado: Boolean(result.qr_code),
         link_pagamento_gerado: Boolean(result.ticket_url)
     });
@@ -154,7 +168,7 @@ async function getOrder(orderId) {
     );
 }
 
-// Mantem compatibilidade com o webhook existente.
+// Mantido para compatibilidade com chamadas existentes.
 async function getPayment(orderId) {
     return getOrder(orderId);
 }
