@@ -1,4 +1,4 @@
-```javascript
+
 const mercadoPagoService = require("../services/mercadoPagoService");
 const Donation = require("../models/Donation");
 
@@ -70,4 +70,4 @@ async function createPix(req, res) {
 }
 
 module.exports = { createPix };
-```
+
