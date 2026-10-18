@@ -8,85 +8,99 @@ const nameText = document.getElementById("name");
 const messageText = document.getElementById("message");
 const amountText = document.getElementById("amount");
 
+// O ID é recebido pela URL do overlay: /overlay?userId=1
+const params = new URLSearchParams(window.location.search);
+const userId = params.get("userId");
+
 const queue = [];
 let showing = false;
 
-// Recebe uma nova doação
+socket.on("connect", () => {
+    console.log("XS Donate Overlay conectado:", socket.id);
+
+    if (userId && /^\d+$/.test(userId) && Number(userId) > 0) {
+        socket.emit("join-user", userId);
+        console.log("Solicitando entrada na sala do usuário:", userId);
+    } else {
+        console.warn(
+            "ID do usuário ausente ou inválido. " +
+            "Use /overlay?userId=ID_DO_USUARIO"
+        );
+    }
+});
+
+socket.on("connect_error", (error) => {
+    console.error("Erro de conexão do overlay:", error.message);
+});
+
 socket.on("donation", (data) => {
+    if (!data || typeof data !== "object") {
+        return;
+    }
+
+    console.log("Alerta de doação recebido:", data);
 
     queue.push(data);
 
     if (!showing) {
         showNextAlert();
     }
-
 });
 
 function showNextAlert() {
-
     if (queue.length === 0) {
-
         showing = false;
-
         return;
-
     }
 
     showing = true;
 
     const donation = queue.shift();
 
-    // Preenche os dados
-    nameText.textContent =
-        donation.donor_name || "Anônimo";
-
+    nameText.textContent = donation.donor_name || "Anônimo";
     messageText.textContent =
-        donation.donor_message || "Obrigado pela doação!";
+        donation.donor_message || "Obrigado pela sua doação!";
 
-    amountText.textContent =
-        "R$ " + Number(donation.amount || 0).toFixed(2);
+    const amount = Number(donation.amount);
 
-    // GIF personalizado
-    if (donation.gif) {
+    amountText.textContent = Number.isFinite(amount)
+        ? amount.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL"
+        })
+        : "R$ 0,00";
 
-        gif.src = donation.gif;
+    gif.src = donation.gif || "/gifs/default.gif";
 
-    } else {
-
-        gif.src = "/gifs/default.gif";
-
-    }
-
-    // Reinicia o áudio
     if (alertSound) {
-
         alertSound.pause();
         alertSound.currentTime = 0;
 
-        alertSound.play().catch(() => {});
+        const playPromise = alertSound.play();
 
+        if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch((error) => {
+                console.warn("O navegador bloqueou o áudio:", error.message);
+            });
+        }
     }
 
-    // Remove estados antigos
-    alertBox.classList.remove("hidden");
-    alertBox.classList.remove("fadeOut");
+    alertBox.classList.remove("hidden", "fadeOut");
 
-    // Tempo do alerta
-    const duration = donation.duration || 7000;
+    const requestedDuration = Number(donation.duration);
+    const duration = Number.isFinite(requestedDuration) &&
+        requestedDuration > 0
+            ? requestedDuration
+            : 7000;
 
     setTimeout(() => {
-
         alertBox.classList.add("fadeOut");
 
         setTimeout(() => {
-
             alertBox.classList.add("hidden");
             alertBox.classList.remove("fadeOut");
 
             showNextAlert();
-
         }, 500);
-
     }, duration);
-
 }
