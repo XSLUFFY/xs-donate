@@ -8,12 +8,16 @@ const mercadoPagoService = require("../services/mercadoPagoService");
 const socket = require("../socket");
 
 function validarAssinatura(req, dataId) {
-    const secret = process.env.MP_WEBHOOK_SECRET;
+    const secret = (process.env.MP_WEBHOOK_SECRET || "").trim();
     const xSignature = req.headers["x-signature"];
     const xRequestId = req.headers["x-request-id"];
 
-    if (!secret || !xSignature || !dataId) {
-        return { valid: false, reason: "Cabecalho ou segredo ausente" };
+    if (!secret) {
+        return { valid: false, reason: "MP_WEBHOOK_SECRET ausente" };
+    }
+
+    if (!xSignature || !dataId) {
+        return { valid: false, reason: "Cabecalho ou data.id ausente" };
     }
 
     const parts = {};
@@ -21,20 +25,23 @@ function validarAssinatura(req, dataId) {
     for (const item of xSignature.split(",")) {
         const separator = item.indexOf("=");
 
-        if (separator < 0) continue;
+        if (separator === -1) continue;
 
         const key = item.slice(0, separator).trim();
         const value = item.slice(separator + 1).trim();
 
-        if (key && value) parts[key] = value;
+        if (key && value) {
+            parts[key] = value;
+        }
     }
 
     if (!parts.ts || !parts.v1) {
         return { valid: false, reason: "Formato x-signature invalido" };
     }
 
+    // IMPORTANTE: preserva o data.id exatamente como veio na query string.
     const manifestParts = [
-        "id:" + String(dataId).toLowerCase()
+        "id:" + String(dataId)
     ];
 
     if (xRequestId) {
@@ -60,15 +67,21 @@ function validarAssinatura(req, dataId) {
         return { valid: false, reason: "Comprimento de assinatura invalido" };
     }
 
+    const valid = crypto.timingSafeEqual(received, expectedBuffer);
+
     return {
-        valid: crypto.timingSafeEqual(received, expectedBuffer),
-        reason: "Assinatura nao corresponde"
+        valid,
+        reason: valid ? "ok" : "Hash nao corresponde"
     };
 }
 
 router.post("/mercadopago", async (req, res) => {
     try {
-        const queryDataId = req.query["data.id"];
+        const rawQueryId = req.query["data.id"];
+        const queryDataId = Array.isArray(rawQueryId)
+            ? rawQueryId[0]
+            : rawQueryId;
+
         const bodyData = req.body?.data;
         const bodyDataId = Array.isArray(bodyData)
             ? bodyData[0]?.id
@@ -77,9 +90,7 @@ router.post("/mercadopago", async (req, res) => {
         const orderId = queryDataId || bodyDataId;
 
         const type = String(
-            req.query.type ||
-            req.body?.type ||
-            ""
+            req.query.type || req.body?.type || ""
         ).toLowerCase();
 
         console.log("[Webhook] Notificacao recebida:", {
@@ -95,21 +106,23 @@ router.post("/mercadopago", async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // Para validar a assinatura, o data.id deve vir da query string.
+        // A assinatura e validada com o data.id da URL, nao do corpo.
         if (!queryDataId) {
-            console.warn("[Webhook] Query data.id ausente; assinatura nao validavel.");
+            console.warn("[Webhook] Query data.id ausente.");
             return res.sendStatus(401);
         }
 
         const signature = validarAssinatura(req, queryDataId);
 
         if (!signature.valid) {
-            console.warn("[Webhook] Assinatura invalida:", signature.reason);
+            console.warn(
+                "[Webhook] Assinatura invalida:",
+                signature.reason
+            );
             return res.sendStatus(401);
         }
 
         if (!orderId) {
-            console.warn("[Webhook] ID da Order ausente.");
             return res.sendStatus(200);
         }
 
@@ -120,16 +133,15 @@ router.post("/mercadopago", async (req, res) => {
         try {
             order = await mercadoPagoService.getOrder(orderId);
         } catch (error) {
-            // O simulador pode enviar um ID de exemplo que nao existe na API.
+            const message = String(error.message || "");
+
             if (
-                String(error.message).includes("invalid_path_param") ||
-                String(error.message).includes("HTTP 400")
+                message.includes("invalid_path_param") ||
+                message.includes("HTTP 400")
             ) {
                 console.warn(
-                    "[Webhook] O ID recebido nao identifica uma Order consultavel. " +
-                    "Nenhuma doacao foi alterada."
+                    "[Webhook] O ID recebido nao corresponde a uma Order consultavel."
                 );
-
                 return res.sendStatus(200);
             }
 
@@ -137,12 +149,14 @@ router.post("/mercadopago", async (req, res) => {
         }
 
         if (String(order.id) !== String(orderId)) {
-            console.warn("[Webhook] ID retornado nao corresponde ao recebido.");
+            console.warn("[Webhook] ID da Order nao corresponde.");
             return res.sendStatus(200);
         }
 
         const payments = order.transactions?.payments;
-        const transaction = Array.isArray(payments) ? payments[0] || {} : {};
+        const transaction = Array.isArray(payments)
+            ? payments[0] || {}
+            : {};
 
         if (
             order.status !== "processed" ||
@@ -175,14 +189,16 @@ router.post("/mercadopago", async (req, res) => {
         }
 
         const expectedAmount = Number(donation.amount);
-        const actualAmount = Number(transaction.amount || order.total_amount);
+        const actualAmount = Number(
+            transaction.amount || order.total_amount
+        );
 
         if (
             !Number.isFinite(expectedAmount) ||
             !Number.isFinite(actualAmount) ||
             Math.abs(expectedAmount - actualAmount) >= 0.01
         ) {
-            console.error("[Webhook] Valor da Order nao corresponde a doacao.");
+            console.error("[Webhook] Valor da Order nao corresponde.");
             return res.sendStatus(200);
         }
 
@@ -190,7 +206,7 @@ router.post("/mercadopago", async (req, res) => {
             donation.payment_id &&
             String(donation.payment_id) !== String(order.id)
         ) {
-            console.error("[Webhook] Order nao corresponde ao pagamento da doacao.");
+            console.error("[Webhook] Order nao corresponde a doacao.");
             return res.sendStatus(200);
         }
 
@@ -209,14 +225,18 @@ router.post("/mercadopago", async (req, res) => {
                 id: updated.id,
                 donor_name: updated.donor_name,
                 donor_message:
-                    updated.donor_message || "Obrigado pela sua doacao!",
+                    updated.donor_message ||
+                    "Obrigado pela sua doacao!",
                 amount: Number(updated.amount),
                 status: "approved",
                 gif: "/gifs/default.gif",
                 duration: 7000
             });
 
-            console.log("[Webhook] Doacao aprovada; alerta emitido:", updated.id);
+            console.log(
+                "[Webhook] Doacao aprovada; alerta emitido:",
+                updated.id
+            );
         } else {
             console.log("[Webhook] Doacao ja aprovada:", donation.id);
         }
