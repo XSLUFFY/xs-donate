@@ -1,60 +1,64 @@
-```javascript
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 const { v4: uuidv4 } = require("uuid");
 
-const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
-
-if (!accessToken) {
-    console.warn("MERCADO_PAGO_ACCESS_TOKEN não configurado.");
-}
+const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || "";
 
 const client = new MercadoPagoConfig({
-    accessToken: accessToken || ""
+    accessToken: accessToken
 });
 
 const paymentClient = new Payment(client);
 
 async function createPixPayment(donation, payerEmail) {
     if (!donation || !donation.id) {
-        throw new Error("Doação ou ID não informado.");
+        throw new Error("Doacao ou ID nao informado.");
     }
 
     const amount = Number(donation.amount);
 
     if (!Number.isFinite(amount) || amount <= 0) {
-        throw new Error("Valor da doação inválido.");
+        throw new Error("Valor da doacao invalido.");
     }
 
     if (!payerEmail) {
-        throw new Error("E-mail do pagador não informado.");
+        throw new Error("E-mail do pagador nao informado.");
     }
 
     if (!accessToken) {
-        throw new Error("Token do Mercado Pago não configurado no Render.");
+        throw new Error("MERCADO_PAGO_ACCESS_TOKEN nao configurado no Render.");
     }
 
     const notificationUrl =
         process.env.WEBHOOK_URL ||
         "https://xs-donate.onrender.com/webhook/mercadopago";
 
-    const response = await paymentClient.create({
-        body: {
-            transaction_amount: Number(amount.toFixed(2)),
-            description: `Doação para XS Donate - ${donation.donor_name}`,
-            payment_method_id: "pix",
-            payer: {
-                email: payerEmail
-            },
-            external_reference: String(donation.id),
-            notification_url: notificationUrl
+    const description =
+        "Doacao para XS Donate - " +
+        String(donation.donor_name || "doador");
+
+    const body = {
+        transaction_amount: Number(amount.toFixed(2)),
+        description: description,
+        payment_method_id: "pix",
+        payer: {
+            email: payerEmail
         },
+        external_reference: String(donation.id),
+        notification_url: notificationUrl
+    };
+
+    const response = await paymentClient.create({
+        body: body,
         requestOptions: {
             idempotencyKey: uuidv4()
         }
     });
 
     const transactionData =
-        response.point_of_interaction?.transaction_data || {};
+        response.point_of_interaction &&
+        response.point_of_interaction.transaction_data
+            ? response.point_of_interaction.transaction_data
+            : {};
 
     return {
         id: response.id,
@@ -71,20 +75,19 @@ async function createPixPayment(donation, payerEmail) {
 
 async function getPayment(paymentId) {
     if (!paymentId) {
-        throw new Error("Payment ID não informado.");
+        throw new Error("ID do pagamento nao informado.");
     }
 
     if (!accessToken) {
-        throw new Error("Token do Mercado Pago não configurado no Render.");
+        throw new Error("MERCADO_PAGO_ACCESS_TOKEN nao configurado no Render.");
     }
 
-    return await paymentClient.get({
+    return paymentClient.get({
         id: String(paymentId)
     });
 }
 
 module.exports = {
-    createPixPayment,
-    getPayment
+    createPixPayment: createPixPayment,
+    getPayment: getPayment
 };
-```
