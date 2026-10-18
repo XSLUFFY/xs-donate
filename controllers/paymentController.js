@@ -1,4 +1,3 @@
-
 const mercadoPagoService = require("../services/mercadoPagoService");
 const Donation = require("../models/Donation");
 
@@ -11,7 +10,7 @@ async function createPix(req, res) {
             });
         }
 
-        const { donationId, email } = req.body;
+        const { donationId, email } = req.body || {};
 
         if (!donationId) {
             return res.status(400).json({
@@ -33,7 +32,8 @@ async function createPix(req, res) {
             });
         }
 
-        const payerEmail = email || req.user.email || process.env.MP_PAYER_EMAIL;
+        const payerEmail =
+            email || req.user.email || process.env.MP_PAYER_EMAIL;
 
         if (!payerEmail) {
             return res.status(400).json({
@@ -70,4 +70,3 @@ async function createPix(req, res) {
 }
 
 module.exports = { createPix };
-
