@@ -1,40 +1,15 @@
 const express = require("express");
 const router = express.Router();
 
-const authModule = require("../middleware/authMiddleware");
+const auth = require("../middleware/authMiddleware");
 const paymentController = require("../controllers/paymentController");
 
-const auth =
-    typeof authModule === "function"
-        ? authModule
-        : authModule?.authMiddleware ||
-          authModule?.auth ||
-          authModule?.authenticate;
+router.post("/pix", auth, paymentController.createPix);
 
-const createPix =
-    typeof paymentController?.createPix === "function"
-        ? paymentController.createPix
-        : null;
-
-console.log(
-    "[payments] auth:",
-    typeof auth,
-    "| createPix:",
-    typeof createPix
+router.get(
+    "/orders/by-donation/:donationId",
+    auth,
+    paymentController.getPixOrder
 );
-
-if (typeof auth !== "function") {
-    throw new TypeError(
-        "authMiddleware não exporta uma função válida."
-    );
-}
-
-if (typeof createPix !== "function") {
-    throw new TypeError(
-        "paymentController não exporta createPix como função."
-    );
-}
-
-router.post("/pix", auth, createPix);
 
 module.exports = router;
