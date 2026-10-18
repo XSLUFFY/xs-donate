@@ -1,44 +1,34 @@
 const Donation = require("../models/Donation");
-const socket = require("../socket");
 
 async function createDonation(userId, data) {
-    const { donor_name, donor_message, amount, gif, duration } = data;
+    const { donor_name, donor_message, amount } = data || {};
 
-    if (!donor_name || !amount) {
-        throw new Error("Nome do doador e valor são obrigatórios.");
+    if (!donor_name || !String(donor_name).trim()) {
+        throw new Error("O nome do doador é obrigatório.");
     }
 
-    if (Number(amount) <= 0) {
+    const numericAmount = Number(amount);
+
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
         throw new Error("O valor da doação deve ser maior que zero.");
     }
 
     const donation = await Donation.createDonation(
         userId,
-        donor_name,
+        String(donor_name).trim(),
         donor_message || "",
-        amount
+        numericAmount
     );
-
-    // Envia a doação para o overlay em tempo real
-    socket.emitToUser(userId, "donation", {
-        id: donation.id,
-        donor_name: donation.donor_name,
-        donor_message: donation.donor_message,
-        amount: donation.amount,
-        status: donation.status,
-        gif: gif || "/gifs/default.gif",
-        duration: Number(duration) || 7000
-    });
 
     return donation;
 }
 
 async function getDonations(userId) {
-    return await Donation.getDonations(userId);
+    return Donation.getDonations(userId);
 }
 
 async function updateStatus(id, status, paymentId) {
-    return await Donation.updateStatus(id, status, paymentId);
+    return Donation.updateStatus(id, status, paymentId);
 }
 
 module.exports = {
