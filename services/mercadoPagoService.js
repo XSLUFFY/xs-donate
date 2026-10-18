@@ -1,12 +1,14 @@
 const { v4: uuidv4 } = require("uuid");
 
-const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || "";
 const API_URL = "https://api.mercadopago.com";
 
-const testMode =
-    (process.env.MP_TEST_MODE || "").toLowerCase() === "true";
+function isTestMode() {
+    return (process.env.MP_TEST_MODE || "").trim().toLowerCase() === "true";
+}
 
 async function apiRequest(url, options = {}) {
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+
     if (!accessToken) {
         throw new Error(
             "MERCADO_PAGO_ACCESS_TOKEN nao configurado no Render."
@@ -32,10 +34,10 @@ async function apiRequest(url, options = {}) {
             JSON.stringify(data) ||
             "Erro desconhecido";
 
-        console.error(
-            "Mercado Pago HTTP " + response.status + ":",
+        console.error("Erro retornado pelo Mercado Pago:", {
+            httpStatus: response.status,
             detail
-        );
+        });
 
         throw new Error(
             "Mercado Pago HTTP " +
@@ -59,13 +61,21 @@ async function createPixPayment(donation, payerEmail) {
         throw new Error("Valor da doacao invalido.");
     }
 
-    if (!payerEmail && !testMode) {
+    const testMode = isTestMode();
+
+    if (testMode && amount !== 50) {
+        throw new Error(
+            "O teste predefinido de PIX exige uma doacao de R$ 50,00."
+        );
+    }
+
+    if (!testMode && !payerEmail) {
         throw new Error("E-mail do pagador nao informado.");
     }
 
     const payer = testMode
         ? {
-            email: "test@testuser.com",
+            email: "test_user_br@testuser.com",
             first_name: "APRO"
         }
         : {
@@ -101,16 +111,17 @@ async function createPixPayment(donation, payerEmail) {
     const transaction =
         order.transactions &&
         Array.isArray(order.transactions.payments)
-            ? order.transactions.payments[0]
+            ? order.transactions.payments[0] || {}
             : {};
 
     const paymentMethod = transaction.payment_method || {};
 
-    return {
+    const result = {
         id: order.id,
         status: order.status || transaction.status || null,
         status_detail:
             order.status_detail || transaction.status_detail || null,
+        payment_id: transaction.id || null,
         amount: order.total_amount || transaction.amount || amount.toFixed(2),
         qr_code: paymentMethod.qr_code || null,
         qr_code_base64: paymentMethod.qr_code_base64 || null,
@@ -118,6 +129,16 @@ async function createPixPayment(donation, payerEmail) {
         external_reference:
             order.external_reference || String(donation.id)
     };
+
+    console.log("Order PIX criada:", {
+        order_id: result.id,
+        status: result.status,
+        status_detail: result.status_detail,
+        qr_code_gerado: Boolean(result.qr_code),
+        link_pagamento_gerado: Boolean(result.ticket_url)
+    });
+
+    return result;
 }
 
 async function getOrder(orderId) {
@@ -127,10 +148,13 @@ async function getOrder(orderId) {
 
     return apiRequest(
         "/v1/orders/" + encodeURIComponent(String(orderId)),
-        { method: "GET" }
+        {
+            method: "GET"
+        }
     );
 }
 
+// Mantem compatibilidade com o webhook existente.
 async function getPayment(orderId) {
     return getOrder(orderId);
 }
