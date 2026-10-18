@@ -1,5 +1,6 @@
 const mercadoPagoService = require("../services/mercadoPagoService");
 const Donation = require("../models/Donation");
+const socket = require("../socket");
 
 async function createPix(req, res) {
     try {
@@ -20,7 +21,6 @@ async function createPix(req, res) {
         }
 
         const donations = await Donation.getDonations(req.user.id);
-
         const donation = donations.find(
             item => String(item.id) === String(donationId)
         );
@@ -29,6 +29,13 @@ async function createPix(req, res) {
             return res.status(404).json({
                 success: false,
                 message: "Doação não encontrada."
+            });
+        }
+
+        if (donation.status === "approved") {
+            return res.status(409).json({
+                success: false,
+                message: "Esta doação já foi aprovada."
             });
         }
 
@@ -78,12 +85,9 @@ async function getPixOrder(req, res) {
             });
         }
 
-        const donationId = req.params.donationId;
-
         const donations = await Donation.getDonations(req.user.id);
-
         const donation = donations.find(
-            item => String(item.id) === String(donationId)
+            item => String(item.id) === String(req.params.donationId)
         );
 
         if (!donation) {
@@ -112,26 +116,66 @@ async function getPixOrder(req, res) {
 
         const method = transaction.payment_method || {};
 
+        const orderIdMatches =
+            String(order.external_reference || "") === String(donation.id);
+
+        const amountPaid = Number(
+            transaction.amount || order.total_amount
+        );
+
+        const donationAmount = Number(donation.amount);
+
+        const isCredited =
+            order.status === "processed" &&
+            order.status_detail === "accredited" &&
+            transaction.status === "processed" &&
+            transaction.status_detail === "accredited" &&
+            orderIdMatches &&
+            Number.isFinite(amountPaid) &&
+            Math.abs(amountPaid - donationAmount) < 0.01;
+
+        let currentDonation = donation;
+
+        if (isCredited && donation.status !== "approved") {
+            currentDonation = await Donation.updateStatus(
+                donation.id,
+                "approved",
+                order.id
+            );
+
+            if (!currentDonation) {
+                throw new Error("Não foi possível atualizar a doação.");
+            }
+
+            socket.emitToUser(
+                currentDonation.user_id,
+                "donation",
+                {
+                    id: currentDonation.id,
+                    donor_name: currentDonation.donor_name,
+                    donor_message:
+                        currentDonation.donor_message ||
+                        "Obrigado pela sua doação!",
+                    amount: Number(currentDonation.amount),
+                    status: "approved",
+                    gif: "/gifs/default.gif",
+                    duration: 7000
+                }
+            );
+        }
+
         return res.json({
             success: true,
             donation: {
-                id: donation.id,
-                status: donation.status
+                id: currentDonation.id,
+                status: currentDonation.status
             },
             order: {
                 id: order.id,
-                status: order.status || transaction.status || null,
-                status_detail:
-                    order.status_detail ||
-                    transaction.status_detail ||
-                    null,
+                status: order.status || null,
+                status_detail: order.status_detail || null,
                 payment_status: transaction.status || null,
-                payment_status_detail:
-                    transaction.status_detail || null,
-                amount:
-                    order.total_amount ||
-                    transaction.amount ||
-                    donation.amount,
+                payment_status_detail: transaction.status_detail || null,
                 qr_code: method.qr_code || null,
                 qr_code_base64: method.qr_code_base64 || null,
                 ticket_url: method.ticket_url || null
@@ -142,7 +186,7 @@ async function getPixOrder(req, res) {
 
         return res.status(500).json({
             success: false,
-            message: error.message || "Erro ao consultar o pagamento."
+            message: error.message || "Erro ao consultar pagamento."
         });
     }
 }
