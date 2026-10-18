@@ -1,203 +1,88 @@
-const { MercadoPagoConfig, Payment } = require("mercadopago");
-const { v4: uuidv4 } = require("uuid");
+```javascript
+const express = require("express");
+const router = express.Router();
 
-const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+const Donation = require("../models/Donation");
+const mercadoPagoService = require("../services/mercadoPagoService");
+const socket = require("../socket");
+const db = require("../database/db");
 
-if (!accessToken) {
-    console.warn(
-        "⚠️ MERCADO_PAGO_ACCESS_TOKEN não configurado."
-    );
-}
+router.post(["/", "/mercadopago"], async (req, res) => {
+    try {
+        const paymentId = req.body?.data?.id || req.query?.["data.id"];
+        const type = req.body?.type || req.query?.type;
 
-const client = new MercadoPagoConfig({
-    accessToken
+        // Confirma o recebimento de eventos que não são pagamentos.
+        if (type && type !== "payment") {
+            return res.sendStatus(200);
+        }
+
+        if (!paymentId) {
+            return res.sendStatus(200);
+        }
+
+        // Consulta o status verdadeiro diretamente no Mercado Pago.
+        const payment = await mercadoPagoService.getPayment(paymentId);
+
+        if (!payment || payment.status !== "approved") {
+            return res.sendStatus(200);
+        }
+
+        let donation = await Donation.findByPaymentId(String(payment.id));
+
+        // O external_reference contém o ID da doação.
+        if (!donation && payment.external_reference) {
+            const donationId = Number(payment.external_reference);
+
+            if (Number.isInteger(donationId) && donationId > 0) {
+                const result = await db.query(
+                    "SELECT * FROM donations WHERE id = $1 LIMIT 1",
+                    [donationId]
+                );
+
+                donation = result.rows[0] || null;
+            }
+        }
+
+        if (!donation) {
+            console.error("Doação não encontrada:", payment.id);
+            return res.sendStatus(200);
+        }
+
+        // Não dispara novamente um alerta já processado.
+        if (donation.status === "approved") {
+            return res.sendStatus(200);
+        }
+
+        const updatedDonation = await Donation.updateStatus(
+            donation.id,
+            "approved",
+            String(payment.id)
+        );
+
+        if (!updatedDonation) {
+            console.error("Não foi possível atualizar a doação:", donation.id);
+            return res.sendStatus(500);
+        }
+
+        // O alerta é enviado somente depois da atualização no banco.
+        socket.emitToUser(String(updatedDonation.user_id), "donation", {
+            id: updatedDonation.id,
+            donor_name: updatedDonation.donor_name,
+            donor_message: updatedDonation.donor_message || "Obrigado pela sua doação!",
+            amount: Number(updatedDonation.amount),
+            status: "approved",
+            gif: "/gifs/default.gif",
+            duration: 7000
+        });
+
+        console.log("Doação aprovada e alerta enviado:", payment.id);
+        return res.sendStatus(200);
+    } catch (error) {
+        console.error("Erro no webhook Mercado Pago:", error.message);
+        return res.sendStatus(500);
+    }
 });
 
-const paymentClient = new Payment(client);
-
-
-// ==========================================
-// CRIAR PAGAMENTO PIX
-// ==========================================
-
-async function createPixPayment(donation, payerEmail) {
-
-    if (!donation) {
-        throw new Error("Doação não informada.");
-    }
-
-    if (!donation.id) {
-        throw new Error("ID da doação não informado.");
-    }
-
-    const amount = Number(donation.amount);
-
-    if (!Number.isFinite(amount) || amount <= 0) {
-        throw new Error("Valor da doação inválido.");
-    }
-
-    if (!payerEmail) {
-        throw new Error(
-            "E-mail do pagador não informado."
-        );
-    }
-
-    const idempotencyKey = uuidv4();
-
-    const notificationUrl =
-        process.env.WEBHOOK_URL ||
-        "https://xs-donate.onrender.com/webhook/mercadopago";
-
-    const body = {
-
-        transaction_amount:
-            Number(amount.toFixed(2)),
-
-        description:
-            `Doação para XS Donate - ${donation.donor_name}`,
-
-        payment_method_id:
-            "pix",
-
-        payer: {
-            email: payerEmail
-        },
-
-        external_reference:
-            String(donation.id),
-
-        notification_url:
-            notificationUrl
-    };
-
-
-    console.log("====================================");
-    console.log("💳 CRIANDO PAGAMENTO PIX");
-    console.log("====================================");
-
-    console.log(
-        "Doação:",
-        donation.id
-    );
-
-    console.log(
-        "Valor:",
-        body.transaction_amount
-    );
-
-    console.log(
-        "Doador:",
-        donation.donor_name
-    );
-
-    console.log(
-        "E-mail:",
-        payerEmail
-    );
-
-    console.log(
-        "Webhook:",
-        notificationUrl
-    );
-
-    console.log("====================================");
-
-
-    const response =
-        await paymentClient.create({
-
-            body,
-
-            requestOptions: {
-                idempotencyKey
-            }
-
-        });
-
-
-    console.log("====================================");
-    console.log("✅ PIX CRIADO");
-    console.log("====================================");
-
-    console.log(
-        "Payment ID:",
-        response.id
-    );
-
-    console.log(
-        "Status:",
-        response.status
-    );
-
-    console.log("====================================");
-
-
-    const transactionData =
-        response.point_of_interaction?.transaction_data || {};
-
-
-    return {
-
-        id:
-            response.id,
-
-        status:
-            response.status,
-
-        status_detail:
-            response.status_detail,
-
-        amount:
-            response.transaction_amount,
-
-        qr_code:
-            transactionData.qr_code || null,
-
-        qr_code_base64:
-            transactionData.qr_code_base64 || null,
-
-        ticket_url:
-            transactionData.ticket_url || null,
-
-        external_reference:
-            response.external_reference ||
-            String(donation.id)
-
-    };
-}
-
-
-// ==========================================
-// CONSULTAR PAGAMENTO
-// ==========================================
-
-async function getPayment(paymentId) {
-
-    if (!paymentId) {
-        throw new Error(
-            "Payment ID não informado."
-        );
-    }
-
-    const response =
-        await paymentClient.get({
-
-            id: String(paymentId)
-
-        });
-
-    return response;
-}
-
-
-// ==========================================
-// EXPORTS
-// ==========================================
-
-module.exports = {
-
-    createPixPayment,
-
-    getPayment
-
-};
+module.exports = router;
+```
