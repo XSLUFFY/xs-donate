@@ -1,334 +1,187 @@
 const express = require("express");
+const crypto = require("crypto");
 
 const router = express.Router();
 
 const Donation = require("../models/Donation");
+const mercadoPagoService = require("../services/mercadoPagoService");
+const socket = require("../socket");
 
-const mercadoPagoService =
-    require("../services/mercadoPagoService");
+function validarAssinatura(req, dataId) {
+    const secret = process.env.MP_WEBHOOK_SECRET;
 
-const socket =
-    require("../socket");
-
-
-// ==========================================
-// WEBHOOK MERCADO PAGO
-// ==========================================
-
-router.post("/mercadopago", async (req, res) => {
-
-    try {
-
-        console.log("==================================");
-        console.log("🔔 WEBHOOK MERCADO PAGO");
-        console.log("==================================");
-
-        console.log("Tipo:", req.body?.type);
-
-        console.log(
-            "Ação:",
-            req.body?.action
-        );
-
-        console.log(
-            "Payment ID:",
-            req.body?.data?.id
-        );
-
-        console.log("==================================");
-
-
-        // ======================================
-        // PEGAR PAYMENT ID
-        // ======================================
-
-        const paymentId =
-            req.body?.data?.id ||
-            req.query?.["data.id"];
-
-
-        if (!paymentId) {
-
-            console.log(
-                "⚠️ Payment ID não informado."
-            );
-
-            return res.sendStatus(200);
-
-        }
-
-
-        // ======================================
-        // IGNORAR EVENTOS QUE NÃO SÃO PAYMENT
-        // ======================================
-
-        const type =
-            req.body?.type ||
-            req.query?.type;
-
-
-        if (
-            type &&
-            type !== "payment"
-        ) {
-
-            console.log(
-                "ℹ️ Evento ignorado:",
-                type
-            );
-
-            return res.sendStatus(200);
-
-        }
-
-
-        // ======================================
-        // CONSULTAR PAGAMENTO NO MERCADO PAGO
-        // ======================================
-
-        const payment =
-            await mercadoPagoService.getPayment(
-                paymentId
-            );
-
-
-        console.log("==================================");
-        console.log("💳 PAGAMENTO CONSULTADO");
-        console.log("==================================");
-
-        console.log(
-            "ID:",
-            payment.id
-        );
-
-        console.log(
-            "Status:",
-            payment.status
-        );
-
-        console.log(
-            "Status detail:",
-            payment.status_detail
-        );
-
-        console.log(
-            "External reference:",
-            payment.external_reference
-        );
-
-        console.log("==================================");
-
-
-        // ======================================
-        // SE NÃO ESTIVER APROVADO
-        // ======================================
-
-        if (
-            payment.status !== "approved"
-        ) {
-
-            console.log(
-                "⏳ Pagamento ainda não aprovado:",
-                payment.status
-            );
-
-            return res.sendStatus(200);
-
-        }
-
-
-        // ======================================
-        // LOCALIZAR DOAÇÃO
-        // ======================================
-
-        let donation = null;
-
-
-        // Primeiro tentamos pelo payment_id
-        donation =
-            await Donation.findByPaymentId(
-                payment.id
-            );
-
-
-        // Se ainda não encontrou,
-        // usamos external_reference
-        if (
-            !donation &&
-            payment.external_reference
-        ) {
-
-            const donationId =
-                Number(
-                    payment.external_reference
-                );
-
-
-            if (
-                Number.isInteger(
-                    donationId
-                )
-            ) {
-
-                const result =
-                    await dbFindDonationById(
-                        donationId
-                    );
-
-                donation = result;
-
-            }
-
-        }
-
-
-        if (!donation) {
-
-            console.error(
-                "❌ Doação não encontrada para o pagamento:",
-                payment.id
-            );
-
-            return res.sendStatus(200);
-
-        }
-
-
-        // ======================================
-        // EVITAR ALERTA DUPLICADO
-        // ======================================
-
-        if (
-            donation.status === "approved"
-        ) {
-
-            console.log(
-                "ℹ️ Doação já estava aprovada."
-            );
-
-            return res.sendStatus(200);
-
-        }
-
-
-        // ======================================
-        // ATUALIZAR DOAÇÃO
-        // ======================================
-
-        const updatedDonation =
-            await Donation.updateStatus(
-
-                donation.id,
-
-                "approved",
-
-                payment.id
-
-            );
-
-
-        console.log(
-            "✅ Doação atualizada para APPROVED."
-        );
-
-
-        // ======================================
-        // ENVIAR ALERTA PARA O OVERLAY
-        // ======================================
-
-        socket.emitToUser(
-
-            updatedDonation.user_id,
-
-            "donation",
-
-            {
-
-                id:
-                    updatedDonation.id,
-
-                donor_name:
-                    updatedDonation.donor_name,
-
-                donor_message:
-                    updatedDonation.donor_message ||
-                    "Obrigado pela sua doação!",
-
-                amount:
-                    Number(
-                        updatedDonation.amount
-                    ),
-
-                status:
-                    "approved",
-
-                gif:
-                    "/gifs/default.gif",
-
-                duration:
-                    7000
-
-            }
-
-        );
-
-
-        console.log(
-            "🎉 ALERTA REAL ENVIADO PARA O OVERLAY."
-        );
-
-
-        return res.sendStatus(200);
-
-
-    } catch (error) {
-
-        console.error(
-            "❌ Erro no webhook Mercado Pago:",
-            error
-        );
-
-        return res.sendStatus(500);
-
+    if (!secret) {
+        throw new Error("MP_WEBHOOK_SECRET nao configurado no Render.");
     }
 
-});
+    const xSignature = req.headers["x-signature"];
+    const xRequestId = req.headers["x-request-id"];
 
+    if (!xSignature || !xRequestId || !dataId) {
+        return false;
+    }
 
-// ==========================================
-// BUSCAR DOAÇÃO PELO ID
-// ==========================================
-//
-// Função auxiliar para o caso em que o
-// external_reference contém o ID da doação.
-//
+    const parts = {};
 
-async function dbFindDonationById(id) {
+    for (const item of xSignature.split(",")) {
+        const [key, value] = item.trim().split("=", 2);
 
-    const db = require("../database/db");
+        if (key && value) {
+            parts[key] = value;
+        }
+    }
 
-    const result = await db.query(
+    if (!parts.ts || !parts.v1) {
+        return false;
+    }
 
-        `
-        SELECT *
-        FROM donations
+    const manifest =
+        "id:" + String(dataId).toLowerCase() +
+        ";request-id:" + xRequestId +
+        ";ts:" + parts.ts +
+        ";";
 
-        WHERE id = $1
+    const expected = crypto
+        .createHmac("sha256", secret)
+        .update(manifest)
+        .digest("hex");
 
-        LIMIT 1
-        `,
+    const receivedBuffer = Buffer.from(parts.v1, "hex");
+    const expectedBuffer = Buffer.from(expected, "hex");
 
-        [id]
+    if (receivedBuffer.length !== expectedBuffer.length) {
+        return false;
+    }
 
-    );
-
-    return result.rows[0];
-
+    return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
 }
 
+router.post("/mercadopago", async (req, res) => {
+    try {
+        const type = String(
+            req.query.type || req.body?.type || ""
+        ).toLowerCase();
 
-// ==========================================
-// EXPORT
-// ==========================================
+        // Este endpoint processa notificacoes da Orders API.
+        if (type !== "order" && type !== "orders_v2") {
+            return res.sendStatus(200);
+        }
+
+        const queryDataId = req.query["data.id"];
+        const orderId = queryDataId || req.body?.data?.id;
+
+        if (!orderId) {
+            console.warn("Webhook recebido sem ID da order.");
+            return res.sendStatus(200);
+        }
+
+        if (!validarAssinatura(req, queryDataId)) {
+            console.warn("Assinatura do webhook invalida ou ausente.");
+            return res.sendStatus(401);
+        }
+
+        // Consultamos a API para confirmar o estado real da order.
+        const order = await mercadoPagoService.getOrder(orderId);
+
+        if (String(order.id) !== String(orderId)) {
+            console.error("O ID da order consultada nao corresponde.");
+            return res.sendStatus(200);
+        }
+
+        // Somente uma order processada e creditada aprova a doacao.
+        if (
+            order.status !== "processed" ||
+            order.status_detail !== "accredited"
+        ) {
+            console.log(
+                "Order ainda nao creditada:",
+                order.status,
+                order.status_detail
+            );
+
+            return res.sendStatus(200);
+        }
+
+        let donation = await Donation.findByPaymentId(order.id);
+
+        if (!donation && order.external_reference) {
+            const donationId = Number(order.external_reference);
+
+            if (Number.isInteger(donationId) && donationId > 0) {
+                donation = await Donation.findById(donationId);
+            }
+        }
+
+        if (!donation) {
+            console.error(
+                "Doacao nao encontrada para a order:",
+                order.id
+            );
+
+            return res.sendStatus(200);
+        }
+
+        // Confere o valor antes de aprovar a doacao.
+        const orderAmount = Number(
+            order.total_paid_amount ?? order.total_amount
+        );
+
+        const donationAmount = Number(donation.amount);
+
+        if (
+            !Number.isFinite(orderAmount) ||
+            !Number.isFinite(donationAmount) ||
+            Math.abs(orderAmount - donationAmount) > 0.009
+        ) {
+            console.error(
+                "Valor da order diferente da doacao:",
+                order.id
+            );
+
+            return res.sendStatus(200);
+        }
+
+        // Evita emitir alertas duplicados em notificacoes repetidas.
+        if (donation.status === "approved") {
+            return res.sendStatus(200);
+        }
+
+        const updatedDonation = await Donation.updateStatus(
+            donation.id,
+            "approved",
+            order.id
+        );
+
+        if (!updatedDonation) {
+            throw new Error("Nao foi possivel atualizar a doacao.");
+        }
+
+        socket.emitToUser(
+            updatedDonation.user_id,
+            "donation",
+            {
+                id: updatedDonation.id,
+                donor_name: updatedDonation.donor_name,
+                donor_message:
+                    updatedDonation.donor_message ||
+                    "Obrigado pela sua doacao!",
+                amount: Number(updatedDonation.amount),
+                status: "approved",
+                gif: "/gifs/default.gif",
+                duration: 7000
+            }
+        );
+
+        console.log(
+            "Doacao aprovada e alerta enviado:",
+            updatedDonation.id
+        );
+
+        return res.sendStatus(200);
+    } catch (error) {
+        console.error("Erro no webhook do Mercado Pago:", error);
+        return res.sendStatus(500);
+    }
+});
 
 module.exports = router;
