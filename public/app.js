@@ -1,19 +1,17 @@
 const socket = io();
 
 const alertBox = document.getElementById("alert");
-const alertSound = document.getElementById("alertSound");
-
 const gif = document.getElementById("gif");
 const nameText = document.getElementById("name");
 const messageText = document.getElementById("message");
 const amountText = document.getElementById("amount");
 
-// O ID é recebido pela URL do overlay: /overlay?userId=1
 const params = new URLSearchParams(window.location.search);
 const userId = params.get("userId");
 
 const queue = [];
 let showing = false;
+let audioContext = null;
 
 socket.on("connect", () => {
     console.log("XS Donate Overlay conectado:", socket.id);
@@ -47,6 +45,72 @@ socket.on("donation", (data) => {
     }
 });
 
+function playAlertSound() {
+    try {
+        const AudioContextClass =
+            window.AudioContext || window.webkitAudioContext;
+
+        if (!AudioContextClass) {
+            console.warn("Este navegador não suporta Web Audio.");
+            return;
+        }
+
+        if (!audioContext) {
+            audioContext = new AudioContextClass();
+        }
+
+        const playChime = () => {
+            const notes = [880, 1174.66, 1567.98];
+            const startTime = audioContext.currentTime + 0.02;
+
+            notes.forEach((frequency, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                const noteStart = startTime + index * 0.14;
+                const noteEnd = noteStart + 0.22;
+
+                oscillator.type = "sine";
+                oscillator.frequency.setValueAtTime(
+                    frequency,
+                    noteStart
+                );
+
+                gain.gain.setValueAtTime(0.0001, noteStart);
+                gain.gain.exponentialRampToValueAtTime(
+                    0.18,
+                    noteStart + 0.025
+                );
+                gain.gain.exponentialRampToValueAtTime(
+                    0.0001,
+                    noteEnd
+                );
+
+                oscillator.connect(gain);
+                gain.connect(audioContext.destination);
+
+                oscillator.start(noteStart);
+                oscillator.stop(noteEnd + 0.03);
+            });
+        };
+
+        if (audioContext.state === "suspended") {
+            audioContext.resume()
+                .then(playChime)
+                .catch((error) => {
+                    console.warn(
+                        "O navegador bloqueou o áudio:",
+                        error.message
+                    );
+                });
+        } else {
+            playChime();
+        }
+    } catch (error) {
+        console.warn("Não foi possível reproduzir o som:", error);
+    }
+}
+
 function showNextAlert() {
     if (queue.length === 0) {
         showing = false;
@@ -58,6 +122,7 @@ function showNextAlert() {
     const donation = queue.shift();
 
     nameText.textContent = donation.donor_name || "Anônimo";
+
     messageText.textContent =
         donation.donor_message || "Obrigado pela sua doação!";
 
@@ -70,26 +135,20 @@ function showNextAlert() {
         })
         : "R$ 0,00";
 
+    gif.onerror = () => {
+        gif.onerror = null;
+        gif.src = "/gifs/default.gif";
+    };
+
     gif.src = donation.gif || "/gifs/default.gif";
-
-    if (alertSound) {
-        alertSound.pause();
-        alertSound.currentTime = 0;
-
-        const playPromise = alertSound.play();
-
-        if (playPromise && typeof playPromise.catch === "function") {
-            playPromise.catch((error) => {
-                console.warn("O navegador bloqueou o áudio:", error.message);
-            });
-        }
-    }
 
     alertBox.classList.remove("hidden", "fadeOut");
 
+    playAlertSound();
+
     const requestedDuration = Number(donation.duration);
-    const duration = Number.isFinite(requestedDuration) &&
-        requestedDuration > 0
+    const duration =
+        Number.isFinite(requestedDuration) && requestedDuration > 0
             ? requestedDuration
             : 7000;
 
@@ -99,7 +158,6 @@ function showNextAlert() {
         setTimeout(() => {
             alertBox.classList.add("hidden");
             alertBox.classList.remove("fadeOut");
-
             showNextAlert();
         }, 500);
     }, duration);
