@@ -1,573 +1,154 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>XS Donate - Dashboard</title>
 
     <link rel="icon" href="../assets/logo.png">
-
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome -->
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
-
-    <!-- CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/dashboard.css">
-
 </head>
 
 <body>
-
 <div class="dashboard">
 
-    <!-- ========================= -->
-    <!-- HEADER -->
-    <!-- ========================= -->
-
     <div class="dashboard-header">
-
         <div class="dashboard-title">
-
-            <h1>
-                Bem-vindo, XS LUFFY 👋
-            </h1>
-
-            <p>
-                Confira suas doações em tempo real.
-            </p>
-
+            <h1 id="welcomeTitle">Bem-vindo ao XS Donate 👋</h1>
+            <p>Confira suas doações em tempo real.</p>
         </div>
 
         <div class="user-card">
-
-            <div class="user-avatar"></div>
-
+            <div class="user-avatar" id="userAvatar">XS</div>
             <div class="user-info">
-
-                <h3>XS LUFFY</h3>
-
-                <span>
-                    Streamer Premium
-                </span>
-
+                <h3 id="userName">Streamer</h3>
+                <span>Conta XS Donate</span>
             </div>
-
         </div>
-
     </div>
-
-    <!-- ========================= -->
-    <!-- CARDS -->
-    <!-- ========================= -->
 
     <div class="dashboard-grid">
-
         <div class="info-card">
-
-            <div class="info-title">
-                Saldo Disponível
-            </div>
-
-            <div class="info-value">
-                R$ 3.580,75
-            </div>
-
-            <div class="info-growth">
-                +12% este mês
-            </div>
-
+            <div class="info-title">Total Aprovado</div>
+            <div class="info-value" id="totalApproved">R$ 0,00</div>
+            <div class="info-growth">Somente pagamentos aprovados</div>
         </div>
 
         <div class="info-card">
-
-            <div class="info-title">
-                Doações Hoje
-            </div>
-
-            <div class="info-value">
-                R$ 215,00
-            </div>
-
-            <div class="info-growth">
-                +8%
-            </div>
-
+            <div class="info-title">Doações Hoje</div>
+            <div class="info-value" id="todayTotal">R$ 0,00</div>
+            <div class="info-growth" id="todayCount">0 doações aprovadas</div>
         </div>
 
         <div class="info-card">
-
-            <div class="info-title">
-                Total do Mês
-            </div>
-
-            <div class="info-value">
-                R$ 4.892,00
-            </div>
-
-            <div class="info-growth">
-                Melhor mês
-            </div>
-
+            <div class="info-title">Total do Mês</div>
+            <div class="info-value" id="monthTotal">R$ 0,00</div>
+            <div class="info-growth" id="monthCount">0 doações aprovadas</div>
         </div>
 
         <div class="info-card">
-
-            <div class="info-title">
-                Total Recebido
-            </div>
-
-            <div class="info-value">
-                R$ 52.380,40
-            </div>
-
-            <div class="info-growth">
-                Desde a criação
-            </div>
-
+            <div class="info-title">Quantidade Aprovada</div>
+            <div class="info-value" id="approvedCount">0</div>
+            <div class="info-growth">Desde o início</div>
         </div>
-
     </div>
-
-    <!-- ========================= -->
-    <!-- GRÁFICO -->
-    <!-- Continua na Parte 2 -->    <!-- ========================= -->
-    <!-- GRÁFICO -->
-    <!-- ========================= -->
 
     <div class="chart-card">
-
         <h2>Doações dos Últimos 7 Dias</h2>
-
         <div class="chart-placeholder">
-
-            <canvas id="donationChart"></canvas>
-
+            <canvas id="donationChart" aria-label="Gráfico de doações aprovadas dos últimos sete dias"></canvas>
         </div>
-
     </div>
-
-
-    <!-- ========================= -->
-    <!-- META -->
-    <!-- ========================= -->
 
     <div class="goal-card">
-
         <h2>Meta do Mês</h2>
-
-        <p>
-            Ajude a comunidade a alcançar a meta deste mês.
-        </p>
+        <p>Progresso calculado com base nas doações aprovadas.</p>
 
         <div class="goal-bar">
-
-            <div class="goal-progress"></div>
-
+            <div class="goal-progress" id="goalProgress"></div>
         </div>
 
         <br>
-
-        <strong>R$ 4.500,00 / R$ 10.000,00</strong>
-
+        <strong id="goalText">R$ 0,00 / R$ 10.000,00 (meta inicial)</strong>
     </div>
 
-
-    <!-- ========================= -->
-    <!-- ÚLTIMAS DOAÇÕES -->
-    <!-- ========================= -->
-
     <div class="table-card">
-
         <h2>Últimas Doações</h2>
-
         <br>
-
         <table>
-
             <thead>
-
                 <tr>
-
                     <th>Apoiador</th>
                     <th>Mensagem</th>
                     <th>Valor</th>
-
+                    <th>Status</th>
                 </tr>
-
             </thead>
-
-            <tbody>
-
+            <tbody id="donationsTable">
                 <tr>
-
-                    <td>Lucas</td>
-
-                    <td>Continue com as lives!</td>
-
-                    <td class="amount">
-                        R$ 50,00
-                    </td>
-
+                    <td colspan="4">Carregando doações...</td>
                 </tr>
-
-                <tr>
-
-                    <td>Marcos</td>
-
-                    <td>Ótimo conteúdo!</td>
-
-                    <td class="amount">
-                        R$ 20,00
-                    </td>
-
-                </tr>
-
-                <tr>
-
-                    <td>Amanda</td>
-
-                    <td>Sucesso sempre!</td>
-
-                    <td class="amount">
-                        R$ 100,00
-                    </td>
-
-                </tr>
-
-                <tr>
-
-                    <td>João</td>
-
-                    <td>Tamo junto!</td>
-
-                    <td class="amount">
-                        R$ 10,00
-                    </td>
-
-                </tr>
-
-                <tr>
-
-                    <td>Pedro</td>
-
-                    <td>Valeu pela ajuda.</td>
-
-                    <td class="amount">
-                        R$ 75,00
-                    </td>
-
-                </tr>
-
             </tbody>
-
         </table>
-
     </div>
-
-
-    <!-- ========================= -->
-    <!-- PIX -->
-    <!-- ========================= -->
 
     <div class="goal-card">
-
-        <h2>Recebimento PIX</h2>
-
-        <br>
-
-        <p>
-
-            Chave PIX
-
+        <h2>Recebimentos</h2>
+        <p id="paymentInfo">
+            Os dados de saldo disponível e recebimentos líquidos dependem da integração oficial com o Mercado Pago.
         </p>
-
-        <br>
-
-        <input
-            type="text"
-            value="pix@xsdonate.com"
-            readonly
-            style="width:100%;
-            padding:15px;
-            border-radius:12px;
-            background:#0F172A;
-            border:1px solid #25324A;
-            color:white;">
-
-        <br><br>
-
-        <button class="dashboard-btn">
-
-            Copiar Chave PIX
-
-        </button>
-
     </div>
 
-
-    <!-- ========================= -->
-    <!-- RANKING -->
-    <!-- Continua na Parte 3 -->    <!-- ========================= -->
-    <!-- RANKING -->
-    <!-- ========================= -->
-
     <div class="table-card">
-
         <h2>🏆 Top Apoiadores</h2>
-
         <br>
-
         <table>
-
             <thead>
-
                 <tr>
                     <th>Posição</th>
                     <th>Nome</th>
-                    <th>Total</th>
+                    <th>Total aprovado</th>
                 </tr>
-
             </thead>
-
-            <tbody>
-
+            <tbody id="supportersTable">
                 <tr>
-                    <td>🥇</td>
-                    <td>Lucas</td>
-                    <td class="amount">R$ 1.250,00</td>
+                    <td colspan="3">Calculando apoiadores...</td>
                 </tr>
-
-                <tr>
-                    <td>🥈</td>
-                    <td>Amanda</td>
-                    <td class="amount">R$ 980,00</td>
-                </tr>
-
-                <tr>
-                    <td>🥉</td>
-                    <td>Pedro</td>
-                    <td class="amount">R$ 845,00</td>
-                </tr>
-
-                <tr>
-                    <td>4º</td>
-                    <td>Marcos</td>
-                    <td class="amount">R$ 700,00</td>
-                </tr>
-
-                <tr>
-                    <td>5º</td>
-                    <td>João</td>
-                    <td class="amount">R$ 590,00</td>
-                </tr>
-
             </tbody>
-
         </table>
-
     </div>
 
-    <!-- ========================= -->
-    <!-- AÇÕES RÁPIDAS -->
-    <!-- ========================= -->
-
     <div class="dashboard-grid">
-
         <div class="info-card">
-
-            <div class="info-title">
-
-                Widgets OBS
-
-            </div>
-
-            <p>
-                Configure alertas, overlays e widgets para suas lives.
-            </p>
-
+            <div class="info-title">Widgets OBS</div>
+            <p>Abra o overlay de alertas para usar na sua transmissão.</p>
             <br>
-
-            <button class="dashboard-btn">
-
-                Abrir Widgets
-
+            <button type="button" class="dashboard-btn" id="openOverlayButton">
+                Abrir Overlay
             </button>
-
         </div>
 
         <div class="info-card">
-
-            <div class="info-title">
-
-                Configurações
-
-            </div>
-
-            <p>
-                Personalize seu perfil, página de doações e preferências.
-            </p>
-
+            <div class="info-title">Sessão</div>
+            <p>Saia da sua conta ao terminar de usar o painel.</p>
             <br>
-
-            <button class="dashboard-btn">
-
-                Abrir Configurações
-
+            <button type="button" class="dashboard-btn" id="logoutButton">
+                Sair da Conta
             </button>
-
         </div>
 
         <div class="info-card">
-
-            <div class="info-title">
-
-                Mercado Pago
-
-            </div>
-
-            <p>
-                Conecte sua conta para receber pagamentos automaticamente.
-            </p>
-
-            <br>
-
-            <button class="dashboard-btn">
-
-                Conectar Conta
-
-            </button>
-
+            <div class="info-title">Mercado Pago</div>
+            <p>A conexão oficial para recebimentos e divisão de pagamentos ainda precisa ser concluída.</p>
         </div>
-
     </div>
 
 </div>
 
-<!-- ========================= -->
-<!-- CHART.JS -->
-<!-- ========================= -->
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-
-const ctx = document.getElementById('donationChart');
-
-new Chart(ctx, {
-
-    type: 'line',
-
-    data: {
-
-        labels: [
-
-            'Seg',
-            'Ter',
-            'Qua',
-            'Qui',
-            'Sex',
-            'Sáb',
-            'Dom'
-
-        ],
-
-        datasets: [{
-
-            label: 'Doações',
-
-            data: [
-
-                120,
-                350,
-                280,
-                640,
-                510,
-                800,
-                720
-
-            ],
-
-            borderColor: '#00E5FF',
-
-            backgroundColor: 'rgba(0,229,255,.15)',
-
-            fill: true,
-
-            tension: .4
-
-        }]
-
-    },
-
-    options: {
-
-        responsive: true,
-
-        maintainAspectRatio: false,
-
-        plugins: {
-
-            legend: {
-
-                labels: {
-
-                    color: '#FFFFFF'
-
-                }
-
-            }
-
-        },
-
-        scales: {
-
-            x: {
-
-                ticks: {
-
-                    color: '#CCCCCC'
-
-                },
-
-                grid: {
-
-                    color: '#25324A'
-
-                }
-
-            },
-
-            y: {
-
-                ticks: {
-
-                    color: '#CCCCCC'
-
-                },
-
-                grid: {
-
-                    color: '#25324A'
-
-                }
-
-            }
-
-        }
-
-    }
-
-});
-
-</script>
-
+<script src="../js/dashboard.js"></script>
 </body>
-
 </html>
