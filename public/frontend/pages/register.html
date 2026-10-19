@@ -1,170 +1,120 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Cadastro | XS Donate</title>
 
     <link rel="stylesheet" href="../css/style.css">
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
-
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
 </head>
 
 <body class="auth-page">
+    <div class="auth-card">
+        <h1>XS Donate</h1>
+        <p>Crie sua conta gratuitamente</p>
 
-<div class="auth-card">
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">Nome de usuário</label>
+                <input type="text" id="username" placeholder="Digite seu nome" required maxlength="100">
+            </div>
 
-    <h1>XS Donate</h1>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Digite seu email" required>
+            </div>
 
-    <p>Crie sua conta gratuitamente</p>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" placeholder="Crie uma senha" required>
+            </div>
 
-    <form id="registerForm">
+            <div class="form-group">
+                <label for="confirmPassword">Confirmar senha</label>
+                <input type="password" id="confirmPassword" placeholder="Repita sua senha" required>
+            </div>
 
-        <div class="form-group">
+            <button type="submit" class="auth-button" id="registerButton">
+                Criar Conta
+            </button>
+        </form>
 
-            <label>Nome de usuário</label>
-
-            <input
-                type="text"
-                id="username"
-                placeholder="Digite seu nome"
-                required>
-
+        <div class="auth-links">
+            <a href="login.html">Já possui uma conta? Entrar</a>
         </div>
-
-        <div class="form-group">
-
-            <label>Email</label>
-
-            <input
-                type="email"
-                id="email"
-                placeholder="Digite seu email"
-                required>
-
-        </div>
-
-        <div class="form-group">
-
-            <label>Senha</label>
-
-            <input
-                type="password"
-                id="password"
-                placeholder="Crie uma senha"
-                required>
-
-        </div>
-
-        <div class="form-group">
-
-            <label>Confirmar senha</label>
-
-            <input
-                type="password"
-                id="confirmPassword"
-                placeholder="Repita sua senha"
-                required>
-
-        </div>
-
-        <button
-            type="submit"
-            class="auth-button">
-
-            Criar Conta
-
-        </button>
-
-    </form>
-
-    <div class="auth-links">
-
-        <a href="login.html">
-
-            Já possui uma conta? Entrar
-
-        </a>
-
     </div>
 
-</div>
+    <script src="../js/app.js"></script>
 
-<script src="../js/app.js"></script>
+    <script>
+        "use strict";
 
-<script>
+        // Usa o mesmo domínio do XS Donate publicado no Render.
+        const API = "/api";
 
-const API = "http://localhost:3000/api";
+        const form = document.getElementById("registerForm");
+        const button = document.getElementById("registerButton");
 
-const form = document.getElementById("registerForm");
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
 
-form.addEventListener("submit", async (e) => {
+            const name = document.getElementById("username").value.trim();
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
 
-    e.preventDefault();
+            if (!name) {
+                alert("Digite seu nome.");
+                return;
+            }
 
-    const username = document.getElementById("username").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-    const confirmPassword = document.getElementById("confirmPassword").value;
+            if (password !== confirmPassword) {
+                alert("As senhas não coincidem.");
+                return;
+            }
 
-    if(password !== confirmPassword){
+            if (password.length < 6) {
+                alert("A senha deve ter pelo menos 6 caracteres.");
+                return;
+            }
 
-        alert("As senhas não coincidem.");
+            button.disabled = true;
+            button.textContent = "Criando conta...";
 
-        return;
+            try {
+                const response = await fetch(`${API}/auth/register`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        password: password
+                    })
+                });
 
-    }
+                const data = await response.json();
 
-    try{
+                if (!response.ok || !data.success) {
+                    alert(data.message || "Não foi possível criar a conta.");
+                    return;
+                }
 
-        const response = await fetch(API + "/auth/register",{
+                alert("Conta criada com sucesso! Agora faça seu login.");
+                window.location.href = "login.html";
 
-            method:"POST",
-
-            headers:{
-                "Content-Type":"application/json"
-            },
-
-            body:JSON.stringify({
-
-                username,
-                email,
-                password
-
-            })
-
+            } catch (error) {
+                console.error("Erro no cadastro:", error);
+                alert("Não foi possível conectar ao servidor. Tente novamente.");
+            } finally {
+                button.disabled = false;
+                button.textContent = "Criar Conta";
+            }
         });
-
-        const data = await response.json();
-
-        if(response.ok){
-
-            alert("Conta criada com sucesso!");
-
-            window.location.href="login.html";
-
-        }else{
-
-            alert(data.message || "Erro ao criar conta.");
-
-        }
-
-    }catch{
-
-        alert("Servidor indisponível.");
-
-    }
-
-});
-
-</script>
-
+    </script>
 </body>
-
 </html>
