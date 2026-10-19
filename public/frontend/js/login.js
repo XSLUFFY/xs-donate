@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -7,7 +8,6 @@
     <title>Login | XS Donate</title>
 
     <link rel="stylesheet" href="../css/style.css">
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -39,7 +39,7 @@
                     required>
             </div>
 
-            <button type="submit" class="auth-button">
+            <button type="submit" class="auth-button" id="loginButton">
                 Entrar
             </button>
         </form>
@@ -51,6 +51,7 @@
         </div>
     </div>
 
+    <!-- Todos os scripts são arquivos externos -->
     <script src="../js/app.js"></script>
     <script src="../js/login.js"></script>
 
