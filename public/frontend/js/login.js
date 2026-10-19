@@ -1,59 +1,56 @@
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+"use strict";
 
-    <title>Login | XS Donate</title>
+document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("loginForm");
+    const button = document.getElementById("loginButton");
 
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-</head>
+    if (!form || !button) {
+        console.error("XS Donate: formulário de login não encontrado.");
+        return;
+    }
 
-<body class="auth-page">
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
 
-    <div class="auth-card">
-        <h1>XS Donate</h1>
-        <p>Entre na sua conta</p>
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
 
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input
-                    type="email"
-                    id="email"
-                    placeholder="Digite seu email"
-                    autocomplete="email"
-                    required>
-            </div>
+        if (!email || !password) {
+            alert("Informe seu e-mail e sua senha.");
+            return;
+        }
 
-            <div class="form-group">
-                <label for="password">Senha</label>
-                <input
-                    type="password"
-                    id="password"
-                    placeholder="Digite sua senha"
-                    autocomplete="current-password"
-                    required>
-            </div>
+        button.disabled = true;
+        button.textContent = "Entrando...";
 
-            <button type="submit" class="auth-button" id="loginButton">
-                Entrar
-            </button>
-        </form>
+        try {
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email, password })
+            });
 
-        <div class="auth-links">
-            <a href="register.html">
-                Ainda não possui conta? Cadastre-se
-            </a>
-        </div>
-    </div>
+            const data = await response.json();
 
-    <!-- Todos os scripts são arquivos externos -->
-    <script src="../js/app.js"></script>
-    <script src="../js/login.js"></script>
+            if (!response.ok || !data.success || !data.token) {
+                alert(data.message || "Não foi possível entrar.");
+                return;
+            }
 
-</body>
-</html>
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("user", JSON.stringify(data.user));
+
+            window.location.href = "dashboard.html";
+
+        } catch (error) {
+            console.error("XS Donate - erro no login:", error);
+            alert("Erro de conexão com o XS Donate. Tente novamente.");
+        } finally {
+            button.disabled = false;
+            button.textContent = "Entrar";
+        }
+    });
+});
